@@ -1,4 +1,29 @@
+
+
+
+
+binary_sensor:
+# status of the bridge - so we can tell if it is online or not via its will
+  - platform: mqtt
+    state_topic: "RF/status"
+    name: "RF Bridge Status"
+    qos: 0
+    payload_on: "online"
+    payload_off: "offline"
+    sensor_class: connectivity
+    
+ # generic RF433 PIR sensors. These only tell me an "on" status. Change them to off with an automation
+  - platform: mqtt
+    name: "PIR1"
+    sensor_class: motion
+    state_topic: "RF/Chuango-ID=2aaaaa"
+    qos: 0
+    payload_on: "ON"
+    payload_off: "OFF"
+    value_template: '{{ value_json.CMD }}'
+
 sensor:
+# ninja blocks WT450 temp / humidity sensor #1
   - platform: mqtt
     state_topic: 'RF/UPM_Esic-ID=0001'
     name: 'Temperature'
@@ -9,7 +34,9 @@ sensor:
     name: 'Humidity'
     unit_of_measurement: '%'
     value_template: '{{ value_json.HUM }}'
-  - platform: mqtt
+    
+# ninja blocks WT450 temp / humidity sensor #2
+    - platform: mqtt
     state_topic: 'RF/UPM_Esic-ID=0002'
     name: 'Temperature'
     unit_of_measurement: '°C'
@@ -20,9 +47,11 @@ sensor:
     unit_of_measurement: '%'
     value_template: '{{ value_json.HUM }}'
 
-
-	
+    
 switch:
+#watts clever RF switch - this is triggered by the RFLink when the command is sent
+#  optimistic required as you get no response from the RFLink when you send a command apart from OK
+#   and there is no way t tell if the actuion actually worked!!
   - platform: mqtt
     name: "Watts3"
     state_topic: "RF/Eurodomest-ID=02d0f2"
@@ -31,3 +60,15 @@ switch:
     payload_on: "10;Eurodomest;02d0f2;02;OFF\n"
     payload_off: "10;Eurodomest;02d0f2;06;ALLON\n" 
     optimistic: true
+    
+# This is a ninjablocks button (generic 433)
+# setup as a switch rather than binary sensor to use the template and try and set it on and off
+    - platform: mqtt
+    name: "Button1"
+    state_topic: "RF/EV1527-ID=015743"
+    command_topic: "RF/EV1527-ID=015743"
+#    command_topic: "RF/TriState-ID=02a981"
+    qos: 0
+    payload_on: "ON"
+    payload_off: "OFF"
+    value_template: '{{ value_json.CMD }}'
