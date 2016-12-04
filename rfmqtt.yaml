@@ -19,4 +19,15 @@ sensor:
     name: 'Humidity'
     unit_of_measurement: '%'
     value_template: '{{ value_json.HUM }}'
+
+
 	
+switch:
+  - platform: mqtt
+    name: "Watts3"
+    state_topic: "RF/Eurodomest-ID=02d0f2"
+    command_topic: "RF/command"
+    qos: 0
+    payload_on: "10;Eurodomest;02d0f2;02;OFF\n"
+    payload_off: "10;Eurodomest;02d0f2;06;ALLON\n" 
+    optimistic: true
