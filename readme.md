@@ -15,7 +15,7 @@ format on the MQTT broker is: (Recieved RF codes)
 Topic: RF/name_of_device-ID_of_device     - this tries to have a unique topic per name/id combo. 
     Note - the name and ID are as determined by the RFLink program - it may not be the label printed on the device sending data!
 
-Payload example: {"raw":"20;B3;DKW2012;ID=004c;TEMP=00eb;HUM=3f;WINSP=0000;WINGS=0000;RAIN=0003;WINDIR=0008;\r","TEMP":23.50,"HUM":3,"WINSP":"0000","WINGS":"0000","RAIN":3,"WINDIR":8}
+Payload example: {"raw":"20;B3;DKW2012;ID=004c;TEMP=00eb;HUM=3f;WINSP=0000;WINGS=0000;RAIN=0003;WINDIR=0009;\r","TEMP":23.50,"HUM":3,"WINSP":"0000","WINGS":"0000","RAIN":3,"WINDIR":"SSW"}
 see RFLink documentation for more details: http://www.nemcon.nl/blog2/protref
 
 Sending commands to the RFLink example: (how to send codes to the RFLink)
