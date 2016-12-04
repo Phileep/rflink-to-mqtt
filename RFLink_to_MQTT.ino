@@ -46,8 +46,8 @@ boolean enableMQTT = true; // if false, do not transmit MQTT codes - for testing
 #include <PubSubClient.h>
 
 // Update these with values suitable for your network.
-const char* ssid = "Wilson2n";
-const char* password = "n00nien0";
+const char* ssid = "SSID";
+const char* password = "password";
 const char* mqtt_server = "10.1.1.235";
 char* client_name = "espRF"; // production version client name
 
@@ -386,16 +386,6 @@ void showParsedData() {
     Serial.print("Got something : ");
     Serial.println(receivedChars);
     // mqtt structure
-/*
-    Serial.print("MQTT: /RF/");    
-    Serial.print(RFName);
-    Serial.print("-");
-    Serial.print(RFID);
-    Serial.println("/");
-    Serial.print("{");
-    Serial.print(RFData);
-    Serial.println("} @@");
-*/
 
     }
 
