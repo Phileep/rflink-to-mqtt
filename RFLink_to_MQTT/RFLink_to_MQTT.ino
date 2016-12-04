@@ -36,6 +36,7 @@ There is some conversions made to make the data more useable:
 Requirements:
 Arduino mega 2560 and RF reciever and or transmitter (see RFLink for recommended devices and wiring)
 ESP8266 device (I have used a node MCU V1.0)
+Arduino libraries: SoftwareSerial.h and ArduinoJson.h
 an MQTT broker runnning. Tested with Mosquitto on a raspberry Pi 2
 
 Optional: 
