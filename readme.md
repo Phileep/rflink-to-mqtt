@@ -25,7 +25,7 @@ Payload: 10;Eurodomest;02d0f2;06;ALLON\n
 
 
 
-I inculde the raw data in full for debugging, then the split out components form RFink
+I included the raw data in full for debugging, then the split out components from RFink
 There is some conversions made to make the data more useable:
     Temp is converted to a float from hex
     Wind direction is converted to a compass heading
