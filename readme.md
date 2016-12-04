@@ -29,7 +29,7 @@ I inculde the raw data in full for debugging, then the split out components form
 There is some conversions made to make the data more useable:
     Temp is converted to a float from hex
     Wind direction is converted to a compass heading
-    etc - details in the parseData function below
+    etc - details in the parseData function in the .ino file 
 
 
 Requirements:
