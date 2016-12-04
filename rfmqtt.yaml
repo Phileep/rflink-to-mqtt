@@ -1,0 +1,22 @@
+sensor:
+  - platform: mqtt
+    state_topic: 'RF/UPM_Esic-ID=0001'
+    name: 'Temperature'
+    unit_of_measurement: '°C'
+    value_template: '{{ value_json.TEMP }}'
+  - platform: mqtt
+    state_topic: 'RF/UPM_Esic-ID=0001'
+    name: 'Humidity'
+    unit_of_measurement: '%'
+    value_template: '{{ value_json.HUM }}'
+  - platform: mqtt
+    state_topic: 'RF/UPM_Esic-ID=0002'
+    name: 'Temperature'
+    unit_of_measurement: '°C'
+    value_template: '{{ value_json.TEMP }}'
+  - platform: mqtt
+    state_topic: 'RF/UPM_Esic-ID=0002'
+    name: 'Humidity'
+    unit_of_measurement: '%'
+    value_template: '{{ value_json.HUM }}'
+	
