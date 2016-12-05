@@ -19,7 +19,9 @@ Payload example: {"raw":"20;B3;DKW2012;ID=004c;TEMP=00eb;HUM=3f;WINSP=0000;WINGS
 see RFLink documentation for more details: http://www.nemcon.nl/blog2/protref
 
 Sending commands to the RFLink example: (how to send codes to the RFLink)
+
 Topic: RF/command
+
 Payload: 10;Eurodomest;02d0f2;06;ALLON\n
     Note that the \n on the end is critical at the moment. Otherwise the ESP will either crash or the RFLink will ignore
 
@@ -44,7 +46,7 @@ I am using Home Assistant, also running on the same Pi : https://home-assistant.
 
 Setup:
 1) Confirm RFLink working on its own through your USB port - then you know you are getting data recieved etc
-    Collect some data form your RF433 devices on the system monitor screen and save them for step 2
+    Collect some data from your RF433 devices on the system monitor screen and save them for step 2
 
 2) Set sketch to be in test mode (testmode = true). 
    Load this firmware onto the ESP8266 and run in test mode (so it listens to the PC over USB, not the RFLink)
