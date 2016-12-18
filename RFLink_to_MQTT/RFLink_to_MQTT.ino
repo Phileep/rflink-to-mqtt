@@ -75,12 +75,14 @@ Phil Wilson December 2016
 SoftwareSerial swSer(14, 12, false, 256); // d5 & d6 on the nodu MC v1.0
 
 const char* ssid = "SSID"; // network SSID for ESP8266 to connect to
-const char* password = "Password"; // password for the network above
-const char* mqtt_server = "10.1.1.235"; // address of the MQTT server that we will communicte with
+const char* password = "wirelesskey"; // password for the network above
+const char* mqtt_server = "192.168.1.140"; // address of the MQTT server that we will communicte with
+const char* mqtt_user = "pi"; // username for MQTT
+const char* mqtt_password = "raspberry"; // password for MQTT
 char* client_name = "espRF"; // production version client name for MQTT login - must be unique on your system
 
 // some testing switches
-boolean testmode = false; // if true, then do not listen to softwareserial but normal serial for input
+boolean testmode = true; // if true, then do not listen to softwareserial but normal serial for input
 boolean enableMQTT = true; // if false, do not transmit MQTT codes - for testing really
 
 
@@ -202,7 +204,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(client_name, willTopic, 0, willRetain, willMessage)) {
+    if (client.connect(client_name, mqtt_user, mqtt_password, willTopic, 0, willRetain, willMessage)) {
       Serial.println("connected");
       // Once connected, update status to online - will Message will drop in if we go offline ...
       client.publish(willTopic,"online",true); 
