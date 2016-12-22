@@ -75,15 +75,16 @@ Phil Wilson December 2016
 SoftwareSerial swSer(14, 12, false, 256); // d5 & d6 on the nodu MC v1.0
 
 const char* ssid = "SSID"; // network SSID for ESP8266 to connect to
-const char* password = "wirelesskey"; // password for the network above
+const char* password = "KEY"; // password for the network above
 const char* mqtt_server = "192.168.1.140"; // address of the MQTT server that we will communicte with
 const char* mqtt_user = "pi"; // username for MQTT
 const char* mqtt_password = "raspberry"; // password for MQTT
 char* client_name = "espRF"; // production version client name for MQTT login - must be unique on your system
 
 // some testing switches
-boolean testmode = true; // if true, then do not listen to softwareserial but normal serial for input
+boolean testmode = false; // if true, then do not listen to softwareserial but normal serial for input
 boolean enableMQTT = true; // if false, do not transmit MQTT codes - for testing really
+boolean enableDebug = true; // if false, do not send data to debug topic - for testing really
 
 
 
@@ -119,6 +120,7 @@ boolean willRetain = true;
 const char* willMessage = "offline" ;
 
 const char* commandTopic = "RF/command";  // command topic ESP will subscribe to and pass as commands to the RFLink
+const char* debugTopic = "RF/DEBUG";  // DEBUG topic ESP will pass as Debug messages
 
 const float TempMax = 50.0; // max temp - if we get a value greater than this, ignore it as an assumed error
 const int HumMax = 101; // max hum - if we get a value greater than this, ignore it as an assumed error
@@ -131,6 +133,7 @@ const int HumMax = 101; // max hum - if we get a value greater than this, ignore
 #include <ArduinoOTA.h>
 // if having problems with larger payloads, increase #define MQTT_MAX_PACKET_SIZE 128 in PubSubClient.h to a larger value before compiling
 // to allow larger payloads - needed if you have a weather station (because I also include raw data in the json payload in case you need it for deugging) 
+// increased to 256 due to weatherstation dk2012 issues
 #include <PubSubClient.h>
 
 
@@ -173,27 +176,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0'; // terminate payload
   strPayload = ((char*)payload);
   char* strPayloadTrimmed = strPayload + 1; // strip off first character as it is a double quote
-  String strPayloadTrimmed2 = strPayload + 1;
+  String strPayloadTrimmed2 = strPayloadTrimmed + 1;
   
     Serial.println("Command coming in!: "); // got someting
-//    strPayload += "\n";
-    Serial.println(strPayload); // got someting
-    swSer.print(strPayload);   // snd data to the RFLink      
-    
+    // strPayload += "\n";
+    Serial.println(strPayload); // got something
+    //swSer.print(strPayload);   // snd data to the RFLink      
     if(strncmp(strPayloadTrimmed,"10",2) == 0) // starts with 10
     {
       Serial.println("got a command - test result: ");
-//      Serial.println(strPayload); 
-//      Serial.println(strtok(strPayload,34));
-//      Serial.println(sizeof(strPayload)); 
-//      Serial.println(strPayloadTrimmed2.length());
-
+      Serial.println(strPayload); 
+      Serial.println(sizeof(strPayload)); 
+      Serial.println(strPayloadTrimmed2.length());
       strPayloadTrimmed2.remove(strPayloadTrimmed2.length()-1,1);
-      
-//      Serial.println(strPayloadTrimmed[strPayloadTrimmed2.length()]);
+      Serial.println(strPayloadTrimmed[strPayloadTrimmed2.length()]);
       Serial.println(strPayloadTrimmed2);  
-      
-//      swSer.print(strPayload);   // snd data to the RFLink      
+      if (enableDebug == true ){
+        client.publish(debugTopic,strPayload,true);
+      }
+      swSer.print(strPayload);   // snd data to the RFLink      
     }
 
 }
@@ -239,7 +240,7 @@ if (testmode){client_name = "espRFTest3";} // in test mode - change client name 
     // 20;02;Imagintronix;ID=0001;TEMP=00dc;HUM=88; 
     // 20;0D;UPM_Esic;ID=0001;TEMP=00df;HUM=67;BAT=OK;
    
-    // Node [nn]: 20 - means message from system - proceed if prefix is 20. Other values are 10 fofr sent message and 11 for recursive
+    // Node [nn]: 20 - means message from system - proceed if prefix is 20. Other values are 10 for sent message and 11 for echo
     // Packet Count [hh]: next is packet count - ignore (2 digit hexdecimal)
     // Name [text]:  Name of the protocol used
     // ID [ID=text]: ID - proceed if ID indentified. If not there, is not a recieved code, just a message from system
@@ -258,7 +259,7 @@ if (testmode){client_name = "espRFTest3";} // in test mode - change client name 
   ArduinoOTA.setHostname(client_name);
 
   // No authentication by default
-  // ArduinoOTA.setPassword((const char *)"123");
+  ArduinoOTA.setPassword((const char *)"123");
 
   ArduinoOTA.onStart([]() {
     Serial.println("OTA Start");
@@ -295,16 +296,15 @@ void recvWithStartEndMarkers() {
     char rc;
 
     if (testmode == false) { // we are in live mode and will parse from swSer rather than serial
-
-
       while (swSer.available() > 0 && newData == false) {
       rc = swSer.read();
-  
               if (rc != endMarker) {
-                  receivedChars[ndx] = rc;
-                  ndx++;
-                  if (ndx >= numChars) {
-                      ndx = numChars - 1;
+                  if (isAscii(rc)) { // ensure char is ascii, this is to stop bad chars being sent https://www.arduino.cc/en/Tutorial/CharacterAnalysis
+                    receivedChars[ndx] = rc;
+                    ndx++;
+                    if (ndx >= numChars) {
+                        ndx = numChars - 1;
+                    }
                   }
               }
               else {
@@ -312,8 +312,6 @@ void recvWithStartEndMarkers() {
                   ndx = 0;
                   newData = true;
               }
-          
-  
      }
     } else { // test use - read from serial as though it was from swSer
 
@@ -323,11 +321,13 @@ void recvWithStartEndMarkers() {
       rc = Serial.read();
     
                 if (rc != endMarker) {
+                    if (isAscii(rc)) { // ensure char is ascii, this is to stop bad chars being sent https://www.arduino.cc/en/Tutorial/CharacterAnalysis
                     receivedChars[ndx] = rc;
                     ndx++;
                     if (ndx >= numChars) {
                         ndx = numChars - 1;
                     }
+                  }
                 }
                 else {
                     receivedChars[ndx] = '\0'; // terminate the string
@@ -421,21 +421,28 @@ void parseData() {      // split the data into its parts
 //
  //       strtokIndx2 = strtok(RFDataTemp,";");      // get the first part - the string
         }
-/*        Serial.print("MQTT Topic: RF/");    
-        Serial.print(RFName);
-        Serial.print("-");
-        Serial.print(RFID);
-        Serial.println("/");
-        root.printTo(Serial);
-        Serial.println();
-*/
+    else if (strcmp(messageFromPC,"10") == 0 ) { // 10 means a message command to RFLINK
+      Serial.println("doing the else if - a 10 code "); 
+      strcpy(RFData , strtokIndx ); // copy all of it to RFData 
+      strcpy( RFName , "unknown" );
+      strcpy( RFID , "10");
+      root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
+    }
+    else if (strcmp(messageFromPC,"11") == 0 ) { // 11 means a message recieved to rflink to echo back
+      Serial.println("doing the else if - a 11 code "); 
+      strcpy(RFData , strtokIndx ); // copy all of it to RFData 
+      strcpy( RFName , "unknown" );
+      strcpy( RFID , "11");
+      root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
+    }
     else { // not a 20 code- something else
       Serial.println("doing the else - not a 20 code "); 
       strcpy(RFData , strtokIndx ); // copy all of it to RFData 
       strcpy( RFName , "unknown" );
       strcpy( RFID , "");
+      root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
     }
-//    client.publish("RF/" + RFName + "-" + RFID , root );
+//    
     // build the topic ("RF/" + RFName + "-" + RFID );
 
     MQTTTopic = "RF/" ;
@@ -490,7 +497,7 @@ void showParsedData() {
             // this temporary copy is necessary to protect the original data
             //   because strtok() used in parseData() replaces the commas with \0
         parseData();
-        //showParsedData();
+        if (testmode == true) {showParsedData();}// we are in live mode and will parse from swSer rather than serial
         newData = false;
     }
     if (!client.connected() and enableMQTT ) {
