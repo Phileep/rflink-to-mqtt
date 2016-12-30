@@ -74,19 +74,8 @@ Phil Wilson December 2016
 // Key User Configuration here:
 SoftwareSerial swSer(14, 12, false, 256); // d5 & d6 on the nodu MC v1.0
 
-const char* ssid = "SSID"; // network SSID for ESP8266 to connect to
-const char* password = "KEY"; // password for the network above
-const char* mqtt_server = "192.168.1.140"; // address of the MQTT server that we will communicte with
-const char* mqtt_user = "pi"; // username for MQTT
-const char* mqtt_password = "raspberry"; // password for MQTT
-char* client_name = "espRF"; // production version client name for MQTT login - must be unique on your system
 
-// some testing switches
-boolean testmode = false; // if true, then do not listen to softwareserial but normal serial for input
-boolean enableMQTT = true; // if false, do not transmit MQTT codes - for testing really
-boolean enableDebug = true; // if false, do not send data to debug topic - for testing really
-
-
+#include "config.h"
 
 // ******************************************************************
 
@@ -259,7 +248,7 @@ if (testmode){client_name = "espRFTest3";} // in test mode - change client name 
   ArduinoOTA.setHostname(client_name);
 
   // No authentication by default
-  ArduinoOTA.setPassword((const char *)"123");
+  // ArduinoOTA.setPassword((const char *)"123");
 
   ArduinoOTA.onStart([]() {
     Serial.println("OTA Start");
@@ -386,15 +375,31 @@ void parseData() {      // split the data into its parts
                 String NamePart = command;
                 ++separator;
                 if (NamePart == "TEMP") { // test if it is TEMP, which is HEX
-                  tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide
+                  char negativeTemp[1];
+                  memcpy(negativeTemp, separator, 1);                    
+
+                  if (strcmp(negativeTemp,"8") == 0) { // if first char is a 8 then strip it off as this is a negative temp
+                    separator = separator + 1 ; //moving the pointer forward to remove first char
+                    tmpfloat=(hextofloat(separator)*-1)*0.10;  // convert from hex to float and multiply by minus 1 to invert and divide by 10 - using multiply as it is faster than divide               
+                    if (enableDebug == true ){
+                      client.publish(debugTopic,"Negative Temp",true);
+                    }
+                  }
+                  else if (strcmp(negativeTemp,"0") == 0) { //  if first char is 0 then it's a positve temp
+                    tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide                  
+                    if (enableDebug == true ){
+                      client.publish(debugTopic,"Positve Temp",true);
+                    }
+                  }
                   if (tmpfloat < TempMax) //test if we are inside the maximum test point - if not, assume spurious data
                     {root.set<float>( NamePart ,tmpfloat ); // passed spurious test - add data to root
                     } } /// end of TEMP block
                 else if (NamePart == "HUM") { // test if it is HUM, which is int
-                  if (strcmp(RFName,"DKW2012") == 0 ) { // digitech weather station - assume it is a hex humidity, not straight int
-                    tmpint = hextoint(separator);}
-                  else {
-                    tmpint = atoi(separator);} // end of setting tmpint to the value we want to use & test
+                  //if (strcmp(RFName,"DKW2012") == 0 ) { // digitech weather station - assume it is a hex humidity, not straight int
+                  //  tmpint = hextoint(separator);}
+                  //else {
+                    tmpint = atoi(separator);
+                  //} // end of setting tmpint to the value we want to use & test
                   if (tmpint > 0 and tmpint < HumMax) //test if we are inside the maximum test point - if not, assume spurious data
                       {root.set<int>( NamePart ,tmpint); } // passed the test - add the data to rot, otherwise it will not be added as spurious
                     }  // end of HUM block                
@@ -464,7 +469,7 @@ void parseData() {      // split the data into its parts
     Serial.print(MQTTTopicConst);
     Serial.print("   ");
     Serial.println(json);
-    client.publish(MQTTTopicConst  , json );
+    client.publish(MQTTTopicConst  , json , willRetain);
 
 }
 
