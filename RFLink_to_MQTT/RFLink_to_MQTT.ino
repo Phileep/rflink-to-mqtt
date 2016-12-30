@@ -74,19 +74,8 @@ Phil Wilson December 2016
 // Key User Configuration here:
 SoftwareSerial swSer(14, 12, false, 256); // d5 & d6 on the nodu MC v1.0
 
-const char* ssid = "SSID"; // network SSID for ESP8266 to connect to
-const char* password = "KEY"; // password for the network above
-const char* mqtt_server = "192.168.1.140"; // address of the MQTT server that we will communicte with
-const char* mqtt_user = "pi"; // username for MQTT
-const char* mqtt_password = "raspberry"; // password for MQTT
-char* client_name = "espRF"; // production version client name for MQTT login - must be unique on your system
 
-// some testing switches
-boolean testmode = false; // if true, then do not listen to softwareserial but normal serial for input
-boolean enableMQTT = true; // if false, do not transmit MQTT codes - for testing really
-boolean enableDebug = true; // if false, do not send data to debug topic - for testing really
-
-
+#include "config.h"
 
 // ******************************************************************
 
@@ -259,7 +248,7 @@ if (testmode){client_name = "espRFTest3";} // in test mode - change client name 
   ArduinoOTA.setHostname(client_name);
 
   // No authentication by default
-  ArduinoOTA.setPassword((const char *)"123");
+  // ArduinoOTA.setPassword((const char *)"123");
 
   ArduinoOTA.onStart([]() {
     Serial.println("OTA Start");
