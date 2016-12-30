@@ -374,19 +374,32 @@ void parseData() {      // split the data into its parts
                 *separator = 0;
                 String NamePart = command;
                 ++separator;
-                if (enableDebug == true ){
-                  client.publish(debugTopic,separator,true);
-                }
                 if (NamePart == "TEMP") { // test if it is TEMP, which is HEX
-                  tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide
+                  char negativeTemp[1];
+                  memcpy(negativeTemp, separator, 1);                    
+
+                  if (strcmp(negativeTemp,"8") == 0) { // if first char is a 8 then strip it off as this is a negative temp
+                    separator = separator + 1 ; //moving the pointer forward to remove first char
+                    tmpfloat=(hextofloat(separator)*-1)*0.10;  // convert from hex to float and multiply by minus 1 to invert and divide by 10 - using multiply as it is faster than divide               
+                    if (enableDebug == true ){
+                      client.publish(debugTopic,"Negative Temp",true);
+                    }
+                  }
+                  else if (strcmp(negativeTemp,"0") == 0) { //  if first char is 0 then it's a positve temp
+                    tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide                  
+                    if (enableDebug == true ){
+                      client.publish(debugTopic,"Positve Temp",true);
+                    }
+                  }
                   if (tmpfloat < TempMax) //test if we are inside the maximum test point - if not, assume spurious data
                     {root.set<float>( NamePart ,tmpfloat ); // passed spurious test - add data to root
                     } } /// end of TEMP block
                 else if (NamePart == "HUM") { // test if it is HUM, which is int
-                  if (strcmp(RFName,"DKW2012") == 0 ) { // digitech weather station - assume it is a hex humidity, not straight int
-                    tmpint = hextoint(separator);}
-                  else {
-                    tmpint = atoi(separator);} // end of setting tmpint to the value we want to use & test
+                  //if (strcmp(RFName,"DKW2012") == 0 ) { // digitech weather station - assume it is a hex humidity, not straight int
+                  //  tmpint = hextoint(separator);}
+                  //else {
+                    tmpint = atoi(separator);
+                  //} // end of setting tmpint to the value we want to use & test
                   if (tmpint > 0 and tmpint < HumMax) //test if we are inside the maximum test point - if not, assume spurious data
                       {root.set<int>( NamePart ,tmpint); } // passed the test - add the data to rot, otherwise it will not be added as spurious
                     }  // end of HUM block                
