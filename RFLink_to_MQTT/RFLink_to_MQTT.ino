@@ -374,6 +374,9 @@ void parseData() {      // split the data into its parts
                 *separator = 0;
                 String NamePart = command;
                 ++separator;
+                if (enableDebug == true ){
+                  client.publish(debugTopic,separator,true);
+                }
                 if (NamePart == "TEMP") { // test if it is TEMP, which is HEX
                   tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide
                   if (tmpfloat < TempMax) //test if we are inside the maximum test point - if not, assume spurious data
@@ -453,7 +456,7 @@ void parseData() {      // split the data into its parts
     Serial.print(MQTTTopicConst);
     Serial.print("   ");
     Serial.println(json);
-    client.publish(MQTTTopicConst  , json );
+    client.publish(MQTTTopicConst  , json , willRetain);
 
 }
 
