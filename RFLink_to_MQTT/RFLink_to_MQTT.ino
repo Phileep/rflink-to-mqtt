@@ -170,7 +170,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("Command coming in!: "); // got someting
     // strPayload += "\n";
     Serial.println(strPayload); // got something
-    //swSer.print(strPayload);   // snd data to the RFLink      
+    swSer.print(strPayload);   // snd data to the RFLink  
+    swSer.print("\r\n");   // snd data to the RFLink    
     if(strncmp(strPayloadTrimmed,"10",2) == 0) // starts with 10
     {
       Serial.println("got a command - test result: ");
@@ -388,7 +389,7 @@ void parseData() {      // split the data into its parts
                   else if (strcmp(negativeTemp,"0") == 0) { //  if first char is 0 then it's a positve temp
                     tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide                  
                     if (enableDebug == true ){
-                      client.publish(debugTopic,"Positve Temp",true);
+                      client.publish(debugTopic,"Positive Temp",true);
                     }
                   }
                   if (tmpfloat < TempMax) //test if we are inside the maximum test point - if not, assume spurious data
@@ -501,6 +502,9 @@ void showParsedData() {
         strcpy(tempChars, receivedChars);
             // this temporary copy is necessary to protect the original data
             //   because strtok() used in parseData() replaces the commas with \0
+        if (enableDebug == true ){
+            client.publish(debugTopic,receivedChars,true);
+}
         parseData();
         if (testmode == true) {showParsedData();}// we are in live mode and will parse from swSer rather than serial
         newData = false;
