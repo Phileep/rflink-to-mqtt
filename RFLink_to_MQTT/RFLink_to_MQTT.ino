@@ -377,16 +377,15 @@ void parseData() {      // split the data into its parts
                 ++separator;
                 if (NamePart == "TEMP") { // test if it is TEMP, which is HEX
                   char negativeTemp[1];
-                  memcpy(negativeTemp, separator, 1);                    
-
+                  memcpy(negativeTemp, separator, 1);             
+                  separator = separator + 1 ; //moving the pointer forward to remove first char       
                   if (strcmp(negativeTemp,"8") == 0) { // if first char is a 8 then strip it off as this is a negative temp
-                    separator = separator + 1 ; //moving the pointer forward to remove first char
                     tmpfloat=(hextofloat(separator)*-1)*0.10;  // convert from hex to float and multiply by minus 1 to invert and divide by 10 - using multiply as it is faster than divide               
                     if (enableDebug == true ){
                       client.publish(debugTopic,"Negative Temp",true);
                     }
                   }
-                  else if (strcmp(negativeTemp,"0") == 0) { //  if first char is 0 then it's a positve temp
+                  else { //  else it's a positve temp
                     tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide                  
                     if (enableDebug == true ){
                       client.publish(debugTopic,"Positive Temp",true);
