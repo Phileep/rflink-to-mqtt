@@ -376,16 +376,20 @@ void parseData() {      // split the data into its parts
                 String NamePart = command;
                 ++separator;
                 if (NamePart == "TEMP") { // test if it is TEMP, which is HEX
-                  char negativeTemp[1];
-                  memcpy(negativeTemp, separator, 1);             
-                  separator = separator + 1 ; //moving the pointer forward to remove first char       
-                  if (strcmp(negativeTemp,"8") == 0) { // if first char is a 8 then strip it off as this is a negative temp
+                  char negativeTemp[2];
+                  size_t destination_size = sizeof (negativeTemp);
+                  strncpy(negativeTemp, separator, destination_size);
+                  negativeTemp[destination_size - 1] = '\0';
+                  strncpy(separator, negativeTemp, 1);               
+                  if (strcmp(negativeTemp,"8") == 0) { // if first char is a 8 then strip it off as this is a negative temp   
+                    separator = separator + 1 ; //moving the pointer forward to remove first char 
                     tmpfloat=(hextofloat(separator)*-1)*0.10;  // convert from hex to float and multiply by minus 1 to invert and divide by 10 - using multiply as it is faster than divide               
                     if (enableDebug == true ){
                       client.publish(debugTopic,"Negative Temp",true);
                     }
                   }
-                  else { //  else it's a positve temp
+                  else if (strcmp(negativeTemp,"0") == 0){ //  else it's a positve temp    
+                    separator = separator + 1 ; //moving the pointer forward to remove first char
                     tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide                  
                     if (enableDebug == true ){
                       client.publish(debugTopic,"Positive Temp",true);
