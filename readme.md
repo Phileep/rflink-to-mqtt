@@ -43,6 +43,7 @@ Optional:
 Somethig to read and react to the MQTT measurements
 I am using Home Assistant, also running on the same Pi : https://home-assistant.io/
 
+Note: If you want to use a username and password for your mqtt broker, Change line 205 in the RFLink_to_MQTT.ino to include username and password as per the PubSubClient API. see https://pubsubclient.knolleary.net/api.html#connect4
 
 Setup:
 1) Confirm RFLink working on its own through your USB port - then you know you are getting data recieved etc
