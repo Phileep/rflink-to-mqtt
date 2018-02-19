@@ -74,16 +74,8 @@ Phil Wilson December 2016
 // Key User Configuration here:
 SoftwareSerial swSer(14, 12, false, 256); // d5 & d6 on the nodu MC v1.0
 
-const char* ssid = "SSID"; // network SSID for ESP8266 to connect to
-const char* password = "Password"; // password for the network above
-const char* mqtt_server = "10.1.1.235"; // address of the MQTT server that we will communicte with
-char* client_name = "espRF"; // production version client name for MQTT login - must be unique on your system
 
-// some testing switches
-boolean testmode = false; // if true, then do not listen to softwareserial but normal serial for input
-boolean enableMQTT = true; // if false, do not transmit MQTT codes - for testing really
-
-
+#include "config.h"
 
 // ******************************************************************
 
@@ -117,6 +109,7 @@ boolean willRetain = true;
 const char* willMessage = "offline" ;
 
 const char* commandTopic = "RF/command";  // command topic ESP will subscribe to and pass as commands to the RFLink
+const char* debugTopic = "RF/DEBUG";  // DEBUG topic ESP will pass as Debug messages
 
 const float TempMax = 50.0; // max temp - if we get a value greater than this, ignore it as an assumed error
 const int HumMax = 101; // max hum - if we get a value greater than this, ignore it as an assumed error
@@ -129,6 +122,7 @@ const int HumMax = 101; // max hum - if we get a value greater than this, ignore
 #include <ArduinoOTA.h>
 // if having problems with larger payloads, increase #define MQTT_MAX_PACKET_SIZE 128 in PubSubClient.h to a larger value before compiling
 // to allow larger payloads - needed if you have a weather station (because I also include raw data in the json payload in case you need it for deugging) 
+// increased to 256 due to weatherstation dk2012 issues
 #include <PubSubClient.h>
 
 
@@ -171,27 +165,26 @@ void callback(char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0'; // terminate payload
   strPayload = ((char*)payload);
   char* strPayloadTrimmed = strPayload + 1; // strip off first character as it is a double quote
-  String strPayloadTrimmed2 = strPayload + 1;
+  String strPayloadTrimmed2 = strPayloadTrimmed + 1;
   
     Serial.println("Command coming in!: "); // got someting
-//    strPayload += "\n";
-    Serial.println(strPayload); // got someting
-    swSer.print(strPayload);   // snd data to the RFLink      
-    
+    // strPayload += "\n";
+    Serial.println(strPayload); // got something
+    swSer.print(strPayload);   // snd data to the RFLink  
+    swSer.print("\r\n");   // snd data to the RFLink    
     if(strncmp(strPayloadTrimmed,"10",2) == 0) // starts with 10
     {
       Serial.println("got a command - test result: ");
-//      Serial.println(strPayload); 
-//      Serial.println(strtok(strPayload,34));
-//      Serial.println(sizeof(strPayload)); 
-//      Serial.println(strPayloadTrimmed2.length());
-
+      Serial.println(strPayload); 
+      Serial.println(sizeof(strPayload)); 
+      Serial.println(strPayloadTrimmed2.length());
       strPayloadTrimmed2.remove(strPayloadTrimmed2.length()-1,1);
-      
-//      Serial.println(strPayloadTrimmed[strPayloadTrimmed2.length()]);
+      Serial.println(strPayloadTrimmed[strPayloadTrimmed2.length()]);
       Serial.println(strPayloadTrimmed2);  
-      
-//      swSer.print(strPayload);   // snd data to the RFLink      
+      if (enableDebug == true ){
+        client.publish(debugTopic,strPayload,true);
+      }
+      swSer.print(strPayload);   // snd data to the RFLink      
     }
 
 }
@@ -202,7 +195,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(client_name, willTopic, 0, willRetain, willMessage)) {
+    if (client.connect(client_name, mqtt_user, mqtt_password, willTopic, 0, willRetain, willMessage)) {
       Serial.println("connected");
       // Once connected, update status to online - will Message will drop in if we go offline ...
       client.publish(willTopic,"online",true); 
@@ -237,7 +230,7 @@ if (testmode){client_name = "espRFTest3";} // in test mode - change client name 
     // 20;02;Imagintronix;ID=0001;TEMP=00dc;HUM=88; 
     // 20;0D;UPM_Esic;ID=0001;TEMP=00df;HUM=67;BAT=OK;
    
-    // Node [nn]: 20 - means message from system - proceed if prefix is 20. Other values are 10 fofr sent message and 11 for recursive
+    // Node [nn]: 20 - means message from system - proceed if prefix is 20. Other values are 10 for sent message and 11 for echo
     // Packet Count [hh]: next is packet count - ignore (2 digit hexdecimal)
     // Name [text]:  Name of the protocol used
     // ID [ID=text]: ID - proceed if ID indentified. If not there, is not a recieved code, just a message from system
@@ -293,16 +286,15 @@ void recvWithStartEndMarkers() {
     char rc;
 
     if (testmode == false) { // we are in live mode and will parse from swSer rather than serial
-
-
       while (swSer.available() > 0 && newData == false) {
       rc = swSer.read();
-  
               if (rc != endMarker) {
-                  receivedChars[ndx] = rc;
-                  ndx++;
-                  if (ndx >= numChars) {
-                      ndx = numChars - 1;
+                  if (isAscii(rc)) { // ensure char is ascii, this is to stop bad chars being sent https://www.arduino.cc/en/Tutorial/CharacterAnalysis
+                    receivedChars[ndx] = rc;
+                    ndx++;
+                    if (ndx >= numChars) {
+                        ndx = numChars - 1;
+                    }
                   }
               }
               else {
@@ -310,8 +302,6 @@ void recvWithStartEndMarkers() {
                   ndx = 0;
                   newData = true;
               }
-          
-  
      }
     } else { // test use - read from serial as though it was from swSer
 
@@ -321,11 +311,13 @@ void recvWithStartEndMarkers() {
       rc = Serial.read();
     
                 if (rc != endMarker) {
+                    if (isAscii(rc)) { // ensure char is ascii, this is to stop bad chars being sent https://www.arduino.cc/en/Tutorial/CharacterAnalysis
                     receivedChars[ndx] = rc;
                     ndx++;
                     if (ndx >= numChars) {
                         ndx = numChars - 1;
                     }
+                  }
                 }
                 else {
                     receivedChars[ndx] = '\0'; // terminate the string
@@ -384,15 +376,34 @@ void parseData() {      // split the data into its parts
                 String NamePart = command;
                 ++separator;
                 if (NamePart == "TEMP") { // test if it is TEMP, which is HEX
-                  tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide
+                  char negativeTemp[2];
+                  size_t destination_size = sizeof (negativeTemp);
+                  strncpy(negativeTemp, separator, destination_size);
+                  negativeTemp[destination_size - 1] = '\0';
+                  strncpy(separator, negativeTemp, 1);               
+                  if (strcmp(negativeTemp,"8") == 0) { // if first char is a 8 then strip it off as this is a negative temp   
+                    separator = separator + 1 ; //moving the pointer forward to remove first char 
+                    tmpfloat=(hextofloat(separator)*-1)*0.10;  // convert from hex to float and multiply by minus 1 to invert and divide by 10 - using multiply as it is faster than divide               
+                    if (enableDebug == true ){
+                      client.publish(debugTopic,"Negative Temp",true);
+                    }
+                  }
+                  else if (strcmp(negativeTemp,"0") == 0){ //  else it's a positve temp    
+                    separator = separator + 1 ; //moving the pointer forward to remove first char
+                    tmpfloat = hextofloat(separator)*0.10; //convert from hex to float and divide by 10 - using multiply as it is faster than divide                  
+                    if (enableDebug == true ){
+                      client.publish(debugTopic,"Positive Temp",true);
+                    }
+                  }
                   if (tmpfloat < TempMax) //test if we are inside the maximum test point - if not, assume spurious data
                     {root.set<float>( NamePart ,tmpfloat ); // passed spurious test - add data to root
                     } } /// end of TEMP block
                 else if (NamePart == "HUM") { // test if it is HUM, which is int
-                  if (strcmp(RFName,"DKW2012") == 0 ) { // digitech weather station - assume it is a hex humidity, not straight int
-                    tmpint = hextoint(separator);}
-                  else {
-                    tmpint = atoi(separator);} // end of setting tmpint to the value we want to use & test
+                  //if (strcmp(RFName,"DKW2012") == 0 ) { // digitech weather station - assume it is a hex humidity, not straight int
+                  //  tmpint = hextoint(separator);}
+                  //else {
+                    tmpint = atoi(separator);
+                  //} // end of setting tmpint to the value we want to use & test
                   if (tmpint > 0 and tmpint < HumMax) //test if we are inside the maximum test point - if not, assume spurious data
                       {root.set<int>( NamePart ,tmpint); } // passed the test - add the data to rot, otherwise it will not be added as spurious
                     }  // end of HUM block                
@@ -419,21 +430,28 @@ void parseData() {      // split the data into its parts
 //
  //       strtokIndx2 = strtok(RFDataTemp,";");      // get the first part - the string
         }
-/*        Serial.print("MQTT Topic: RF/");    
-        Serial.print(RFName);
-        Serial.print("-");
-        Serial.print(RFID);
-        Serial.println("/");
-        root.printTo(Serial);
-        Serial.println();
-*/
+    else if (strcmp(messageFromPC,"10") == 0 ) { // 10 means a message command to RFLINK
+      Serial.println("doing the else if - a 10 code "); 
+      strcpy(RFData , strtokIndx ); // copy all of it to RFData 
+      strcpy( RFName , "unknown" );
+      strcpy( RFID , "10");
+      root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
+    }
+    else if (strcmp(messageFromPC,"11") == 0 ) { // 11 means a message recieved to rflink to echo back
+      Serial.println("doing the else if - a 11 code "); 
+      strcpy(RFData , strtokIndx ); // copy all of it to RFData 
+      strcpy( RFName , "unknown" );
+      strcpy( RFID , "11");
+      root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
+    }
     else { // not a 20 code- something else
       Serial.println("doing the else - not a 20 code "); 
       strcpy(RFData , strtokIndx ); // copy all of it to RFData 
       strcpy( RFName , "unknown" );
       strcpy( RFID , "");
+      root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
     }
-//    client.publish("RF/" + RFName + "-" + RFID , root );
+//    
     // build the topic ("RF/" + RFName + "-" + RFID );
 
     MQTTTopic = "RF/" ;
@@ -455,7 +473,7 @@ void parseData() {      // split the data into its parts
     Serial.print(MQTTTopicConst);
     Serial.print("   ");
     Serial.println(json);
-    client.publish(MQTTTopicConst  , json );
+    client.publish(MQTTTopicConst  , json , willRetain);
 
 }
 
@@ -487,8 +505,11 @@ void showParsedData() {
         strcpy(tempChars, receivedChars);
             // this temporary copy is necessary to protect the original data
             //   because strtok() used in parseData() replaces the commas with \0
+        if (enableDebug == true ){
+            client.publish(debugTopic,receivedChars,true);
+}
         parseData();
-        //showParsedData();
+        if (testmode == true) {showParsedData();}// we are in live mode and will parse from swSer rather than serial
         newData = false;
     }
     if (!client.connected() and enableMQTT ) {
