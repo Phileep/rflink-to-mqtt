@@ -1,8 +1,8 @@
 /*
 Link between the RF reciever/transmitter project based on an arduino mega, RFLink and MQTT
 Link to RFLink: http://www.nemcon.nl/blog2/download
-This includes wiring and device compatability for RFLink. 
-This is used as per the RFLink instructions except that 
+This includes wiring and device compatability for RFLink.
+This is used as per the RFLink instructions except that
  an ESP8266 is used for the serial communication instead of a computer via USB
 
 
@@ -13,7 +13,7 @@ RF433 data is recieved by the RFLink and passed on to the ESP8266
 The ESP8266 packages it up into a JSON statement and publishes it ot the MQTT broker
 format on the MQTT broker is: (Recieved RF codes)
 
-Topic: RF/name_of_device-ID_of_device     - this tries to have a unique topic per name/id combo. 
+Topic: RF/name_of_device-ID_of_device     - this tries to have a unique topic per name/id combo.
     Note - the name and ID are as determined by the RFLink program - it may not be the label printed on the device sending data!
 
 Payload example: {"raw":"20;B3;DKW2012;ID=004c;TEMP=00eb;HUM=3f;WINSP=0000;WINGS=0000;RAIN=0003;WINDIR=0008;\r","TEMP":23.50,"HUM":3,"WINSP":"0000","WINGS":"0000","RAIN":3,"WINDIR":8}
@@ -21,9 +21,7 @@ see RFLink documentation for more details: http://www.nemcon.nl/blog2/protref
 
 Sending commands to the RFLink example: (how to send codes to the RFLink)
 Topic: RF/command
-Payload: 10;Eurodomest;02d0f2;06;ALLON\n
-    Note that the \n on the end is critical at the moment. Otherwise the ESP will either crash or the RFLink will ignore
-
+Payload: 10;Eurodomest;02d0f2;06;ALLON
 
 
 I inculde the raw data in full for debugging, then the split out components form RFink
@@ -39,7 +37,7 @@ ESP8266 device (I have used a node MCU V1.0)
 Arduino libraries: SoftwareSerial.h and ArduinoJson.h
 an MQTT broker runnning. Tested with Mosquitto on a raspberry Pi 2
 
-Optional: 
+Optional:
 Somethig to read and react to the MQTT measurements
 I am using Home Assistant, also running on the same Pi : https://home-assistant.io/
 
@@ -48,24 +46,24 @@ Setup:
 1) Confirm RFLink working on its own through your USB port - then you know you are getting data recieved etc
     Collect some data form your RF433 devices on the system monitor screen and save them for step 2
 
-2) Set sketch to be in test mode (testmode = true). 
+2) Set sketch to be in test mode (testmode = true).
    Load this firmware onto the ESP8266 and run in test mode (so it listens to the PC over USB, not the RFLink)
     Input some data as recieved in step 1. Check that the ESP connects to your system and publishes topics as expected
 
 3) Load updated firmware - setting testmode to false (see section for user inputs below)
     Wire the ESP to the RFLink ESP d5 & d6  to Mega 0 & 1.
     Check your mqtt broker for recieved data being published.
- 
-4) Setup your home automation to react to the published data and pubish commands to the RFLink 
-      
+
+4) Setup your home automation to react to the published data and pubish commands to the RFLink
+
 To Do:
-1) ESP will sometimes crash with unexpected output from RFLink. 
+1) ESP will sometimes crash with unexpected output from RFLink.
     I think it is when you get messages starting with 20 but not with as as many semicolon delimited fields as expected.
     Currently, I ensure that the Mega (RFLink) is up before restarting the ESP.
 
-2) Tidy up the callback behaviour for sending data to the RFLink - data is fickle and if you do not terminate with \n it will crash the ESP
-  
-  
+2) Tidy up the callback behaviour for sending data to the RFLink - data is fickle.
+
+
 Phil Wilson December 2016
 
 */
@@ -128,7 +126,7 @@ const int HumMax = 101; // max hum - if we get a value greater than this, ignore
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 // if having problems with larger payloads, increase #define MQTT_MAX_PACKET_SIZE 128 in PubSubClient.h to a larger value before compiling
-// to allow larger payloads - needed if you have a weather station (because I also include raw data in the json payload in case you need it for deugging) 
+// to allow larger payloads - needed if you have a weather station (because I also include raw data in the json payload in case you need it for deugging)
 #include <PubSubClient.h>
 
 
@@ -143,7 +141,7 @@ String strOutputt = "";
 String strOutputth = "";
 
 // array of wind directions - used by weather stations. output from the RFLink under WINDIR is an integr 0-15 - will lookup the array for the compass text version
-String CompassDirTable[17] = {"N","NNE","NE","ENE","E","ESE", "SE","SSE","S","SSW","SW","WSW", "W","WNW","NW","NNW","N"}; 
+String CompassDirTable[17] = {"N","NNE","NE","ENE","E","ESE", "SE","SSE","S","SSW","SW","WSW", "W","WNW","NW","NNW","N"};
 
 void setup_wifi() {
 
@@ -155,7 +153,7 @@ void setup_wifi() {
 
   WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) 
+  while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
@@ -172,26 +170,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
   strPayload = ((char*)payload);
   char* strPayloadTrimmed = strPayload + 1; // strip off first character as it is a double quote
   String strPayloadTrimmed2 = strPayload + 1;
-  
+
     Serial.println("Command coming in!: "); // got someting
-//    strPayload += "\n";
     Serial.println(strPayload); // got someting
-    swSer.print(strPayload);   // snd data to the RFLink      
-    
+    swSer.println(strPayload);  // send data to the RFLink; println add a \n at the end.
+
     if(strncmp(strPayloadTrimmed,"10",2) == 0) // starts with 10
     {
       Serial.println("got a command - test result: ");
-//      Serial.println(strPayload); 
+//      Serial.println(strPayload);
 //      Serial.println(strtok(strPayload,34));
-//      Serial.println(sizeof(strPayload)); 
+//      Serial.println(sizeof(strPayload));
 //      Serial.println(strPayloadTrimmed2.length());
 
       strPayloadTrimmed2.remove(strPayloadTrimmed2.length()-1,1);
-      
+
 //      Serial.println(strPayloadTrimmed[strPayloadTrimmed2.length()]);
-      Serial.println(strPayloadTrimmed2);  
-      
-//      swSer.print(strPayload);   // snd data to the RFLink      
+      Serial.println(strPayloadTrimmed2);
+
+//      swSer.print(strPayload);   // snd data to the RFLink
     }
 
 }
@@ -205,10 +202,10 @@ void reconnect() {
     if (client.connect(client_name, willTopic, 0, willRetain, willMessage)) {
       Serial.println("connected");
       // Once connected, update status to online - will Message will drop in if we go offline ...
-      client.publish(willTopic,"online",true); 
-          
+      client.publish(willTopic,"online",true);
+
       client.subscribe(commandTopic);// subscribe to the command topic - will listen here for comands to the RFLink
-      
+
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -230,23 +227,23 @@ if (testmode){client_name = "espRFTest3";} // in test mode - change client name 
   // JsonBuffer with all the other nodes of the object tree.
   // Memory is freed when jsonBuffer goes out of scope.
   JsonObject& root = jsonBuffer.createObject();
-  
+
   Serial.begin(57600);
   swSer.begin(57600); // this is the baud rate of the RF LINK
     // expected format examples: - will treat as 5 components (Packet Count ignored).
-    // 20;02;Imagintronix;ID=0001;TEMP=00dc;HUM=88; 
+    // 20;02;Imagintronix;ID=0001;TEMP=00dc;HUM=88;
     // 20;0D;UPM_Esic;ID=0001;TEMP=00df;HUM=67;BAT=OK;
-   
+
     // Node [nn]: 20 - means message from system - proceed if prefix is 20. Other values are 10 fofr sent message and 11 for recursive
     // Packet Count [hh]: next is packet count - ignore (2 digit hexdecimal)
     // Name [text]:  Name of the protocol used
     // ID [ID=text]: ID - proceed if ID indentified. If not there, is not a recieved code, just a message from system
     // Data [text]: remainder is data from the sensor - concateate & send as a JSON data block
- 
-    setup_wifi(); 
+
+    setup_wifi();
     client.setServer(mqtt_server, 1883);
     client.setCallback(callback);
-  
+
     Serial.println("\nRFLINK serial listener started");
     Serial.println("Example data  20;0D;UPM_Esic;ID=test;TEMP=00df;HUM=67;BAT=OK;");
     Serial.println("Example data  20;B3;DKW2012;ID=test;TEMP=00eb;HUM=3f;WINSP=008c;WINGS=00cd;RAIN=0003;WINDIR=0008;");
@@ -297,7 +294,7 @@ void recvWithStartEndMarkers() {
 
       while (swSer.available() > 0 && newData == false) {
       rc = swSer.read();
-  
+
               if (rc != endMarker) {
                   receivedChars[ndx] = rc;
                   ndx++;
@@ -310,16 +307,16 @@ void recvWithStartEndMarkers() {
                   ndx = 0;
                   newData = true;
               }
-          
-  
+
+
      }
     } else { // test use - read from serial as though it was from swSer
 
- 
+
 //
         while (Serial.available() > 0 && newData == false) {
       rc = Serial.read();
-    
+
                 if (rc != endMarker) {
                     receivedChars[ndx] = rc;
                     ndx++;
@@ -333,7 +330,7 @@ void recvWithStartEndMarkers() {
                     newData = true;
                 }
         }
-        
+
 
     }
 //
@@ -357,20 +354,24 @@ void parseData() {      // split the data into its parts
     strtokIndx = strtok(tempChars,";");      // get the first part - the string
     strcpy(messageFromPC, strtokIndx); // copy it to messageFromPC
     if (strcmp(messageFromPC,"20") == 0 ) { // 20 means a message recieved from RFLINK - this is what we are interested in breaking up for use
-      
+
       strtokIndx = strtok(NULL, ";" ); // this continues where the previous call left off - which we will ignore as it is the packet count
       strtokIndx = strtok(NULL, ";" ); // this should be the name
+      if (strcmp(strtokIndx,"OK") == 0 ) {  // RFLink send a "20;xx;OK;" when you send a valid command.
+          Serial.println(strtokIndx);       // this should be "OK", print for debug purpose.
+          return;                           // exit parseData because there is no more data to parse after OK in this case.
+      }
       strcpy( RFName , strtokIndx ); // copy name to RFName
-      
+
       strtokIndx = strtok(NULL, ";");
-      strcpy( RFID , strtokIndx); // copy next block to RFID    
-  
+      strcpy( RFID , strtokIndx); // copy next block to RFID
+
       strtokIndx = strtok(NULL, "\n"); // search for the rest of the buffer input ending in \n
-      strcpy(RFData , strtokIndx ); // copy remainder of block to RFData 
+      strcpy(RFData , strtokIndx ); // copy remainder of block to RFData
         // now find if we have TEMP= in RFData and convert from hex to int
       strcpy(RFDataTemp , RFData ); // temp copy of RFData so we can search for temp and convert from hex to decimal
 
-        // Read each command pair 
+        // Read each command pair
         char* command = strtok(RFDataTemp, ";");
         root["raw"] = receivedChars; // copy the raw data to the json in case we need to debug
         while (command != 0 and strlen(command)>4 )
@@ -395,7 +396,7 @@ void parseData() {      // split the data into its parts
                     tmpint = atoi(separator);} // end of setting tmpint to the value we want to use & test
                   if (tmpint > 0 and tmpint < HumMax) //test if we are inside the maximum test point - if not, assume spurious data
                       {root.set<int>( NamePart ,tmpint); } // passed the test - add the data to rot, otherwise it will not be added as spurious
-                    }  // end of HUM block                
+                    }  // end of HUM block
                 else if (NamePart == "RAIN")  // test if it is RAIN, which is HEX
                     {root.set<float>( NamePart ,hextofloat(separator)*0.10 );} //  - add data to root
                 else if (NamePart == "WINSP")  // test if it is WINSP, which is HEX
@@ -403,15 +404,15 @@ void parseData() {      // split the data into its parts
                 else if (NamePart == "WINGS")  // test if it is WINGS, which is HEX
                     {root.set<float>( NamePart ,hextofloat(separator)*0.10 );} //  - add data to root
                 else if (NamePart == "WINDIR")  // test if it is WINDIR, which is 0-15 representing the wind angle / 22.5 - convert to compas text
-                    {root[NamePart] = CompassDirTable[atoi(separator)] ;} 
+                    {root[NamePart] = CompassDirTable[atoi(separator)] ;}
                 else // check if an int, add as int, else add as text
                   if (atoi(separator) == 0)  // not an integer
                     {root[NamePart] = separator ;} // do normal string add
-                  else 
+                  else
                     {root.set<int>( NamePart , atoi(separator) ); }// do int add
-              } 
-                
-            
+              }
+
+
             // Find the next command in input string
             command = strtok(NULL, ";");
             }
@@ -419,7 +420,7 @@ void parseData() {      // split the data into its parts
 //
  //       strtokIndx2 = strtok(RFDataTemp,";");      // get the first part - the string
         }
-/*        Serial.print("MQTT Topic: RF/");    
+/*        Serial.print("MQTT Topic: RF/");
         Serial.print(RFName);
         Serial.print("-");
         Serial.print(RFID);
@@ -428,8 +429,8 @@ void parseData() {      // split the data into its parts
         Serial.println();
 */
     else { // not a 20 code- something else
-      Serial.println("doing the else - not a 20 code "); 
-      strcpy(RFData , strtokIndx ); // copy all of it to RFData 
+      Serial.println("doing the else - not a 20 code ");
+      strcpy(RFData , strtokIndx ); // copy all of it to RFData
       strcpy( RFName , "unknown" );
       strcpy( RFID , "");
     }
@@ -437,17 +438,17 @@ void parseData() {      // split the data into its parts
     // build the topic ("RF/" + RFName + "-" + RFID );
 
     MQTTTopic = "RF/" ;
-    MQTTTopic += String(RFName); 
+    MQTTTopic += String(RFName);
     MQTTTopic += "-" ;
     MQTTTopic += String(RFID) ;
-    size_t lenM = MQTTTopic.length(); // returns length of the json     
+    size_t lenM = MQTTTopic.length(); // returns length of the json
     size_t sizeM = lenM + 1;
 
     char MQTTTopicConst[lenM];
     MQTTTopic.toCharArray(MQTTTopicConst,sizeM) ;
-    
+
     // place the json data into variable 'json' for publishing over MQTT
-    size_t len = root.measureLength(); // returns length of the json 
+    size_t len = root.measureLength(); // returns length of the json
     size_t size = len+1;
     char json[size];
     root.printTo(json,size);
@@ -466,7 +467,7 @@ void showParsedData() {
     Serial.println(receivedChars);
     // mqtt structure
 /*
-    Serial.print("MQTT: /RF/");    
+    Serial.print("MQTT: /RF/");
     Serial.print(RFName);
     Serial.print("-");
     Serial.print(RFID);
@@ -497,6 +498,6 @@ void showParsedData() {
     client.loop();
 
     // listen for OTA reprogramming
-    ArduinoOTA.handle(); 
+    ArduinoOTA.handle();
 }
 

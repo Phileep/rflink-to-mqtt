@@ -11,7 +11,7 @@ binary_sensor:
     payload_on: "online"
     payload_off: "offline"
     sensor_class: connectivity
-    
+
  # generic RF433 PIR sensors. These only tell me an "on" status. Change them to off with an automation
   - platform: mqtt
     name: "PIR1"
@@ -34,7 +34,7 @@ sensor:
     name: 'Humidity'
     unit_of_measurement: '%'
     value_template: '{{ value_json.HUM }}'
-    
+
 # ninja blocks WT450 temp / humidity sensor #2
     - platform: mqtt
     state_topic: 'RF/UPM_Esic-ID=0002'
@@ -47,7 +47,7 @@ sensor:
     unit_of_measurement: '%'
     value_template: '{{ value_json.HUM }}'
 
-    
+
 switch:
 #watts clever RF switch - this is triggered by the RFLink when the command is sent
 #  optimistic required as you get no response from the RFLink when you send a command apart from OK
@@ -57,10 +57,10 @@ switch:
     state_topic: "RF/Eurodomest-ID=02d0f2"
     command_topic: "RF/command"
     qos: 0
-    payload_on: "10;Eurodomest;02d0f2;02;OFF\n"
-    payload_off: "10;Eurodomest;02d0f2;06;ALLON\n" 
+    payload_on: "10;Eurodomest;02d0f2;02;OFF"
+    payload_off: "10;Eurodomest;02d0f2;06;ALLON"
     optimistic: true
-    
+
 # This is a ninjablocks button (generic 433)
 # setup as a switch rather than binary sensor to use the template and try and set it on and off
     - platform: mqtt
